@@ -1,0 +1,53 @@
+import PySimpleGUI as sg
+from PIL import Image, ImageFilter, ImageOps
+from io import BytesIO
+
+
+def updateIMG(org_img, blur, contrast, emboss, contour, flipx, flipy):
+    global image
+    image = original.filter(ImageFilter.GaussianBlur(blur))
+    image = image.filter(ImageFilter.UnsharpMask(contrast))
+
+    if emboss:
+        image = image.filter(ImageFilter.EMBOSS())
+    if contour:
+        image = image.filter(ImageFilter.CONTOUR())
+    if flipx:
+        image = ImageOps.mirror(image)
+    if flipy:
+        image = ImageOps.flip(image)
+
+    bio = BytesIO()
+    image.save(bio, format="PNG")
+    window["-IMAGE-"].update(data=bio.getvalue())
+
+
+imagePATH = sg.popup_get_file("Open",no_window=True)
+
+controlCOL = sg.Column([[sg.Frame("Contrast", layout=[[sg.Slider(range=(0, 10), orientation="h", key="-CONTRAST-")]])],
+                        [sg.Frame("Blur", layout=[[sg.Slider(range=(0, 10), orientation="h", key="-BLUR-")]])],
+                        [sg.Checkbox("Emboss", key="-EMBOSS-"), sg.Checkbox("Contour", key="-CONTOUR-")],
+                        [sg.Checkbox("Flip x", key="-FLIPX-"), sg.Checkbox("Flip y", key="-FLIPY-")],
+                        [sg.Button("Save Image", key="-SAVE-")]])
+
+imageCOL = sg.Column([[sg.Image(imagePATH, key="-IMAGE-")]])
+
+layout = [[controlCOL, imageCOL]]
+
+original = Image.open(imagePATH)
+window = sg.Window("Image Editor", layout)
+
+while True:
+    event, values = window.read(timeout=10)
+
+    if event == sg.WIN_CLOSED:
+        break
+
+    updateIMG(original, values["-BLUR-"], values["-CONTRAST-"], values["-EMBOSS-"], values["-CONTOUR-"],
+              values["-FLIPX-"], values["-FLIPY-"])
+
+    if event == "-SAVE-":
+        savePATH = sg.popup_get_file("Save",save_as=True,no_window=True) + ".png"
+        image.save(savePATH,"PNG")
+
+window.close()
